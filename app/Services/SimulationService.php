@@ -1,0 +1,198 @@
+<?php
+
+namespace App\Services;
+
+use App\Agents\MatchSimulationAgent;
+use App\Enums\SimulationStatus;
+use App\Jobs\PlaySimulation;
+use App\Models\SimulationSession;
+use ChukkaWp\ChukkaSpec\Models\Player;
+use ChukkaWp\ChukkaSpec\Models\RuleSet;
+use Database\Seeders\SimTeamsSeeder;
+use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
+
+class SimulationService
+{
+    public function __construct(
+        private readonly CloudApiClient $cloudApi,
+        private readonly ScenarioPromptBuilder $promptBuilder,
+        private readonly EventValidatorService $validator,
+    ) {}
+
+    public function createSession(
+        string $ruleSetId,
+        string $scenarioPreset,
+        string $scenarioPrompt,
+        string $modelName,
+    ): SimulationSession {
+        return SimulationSession::create([
+            'rule_set_id' => $ruleSetId,
+            'scenario_preset' => $scenarioPreset,
+            'scenario_prompt' => $scenarioPrompt,
+            'model_name' => $modelName,
+            'status' => SimulationStatus::Pending,
+        ]);
+    }
+
+    public function generate(SimulationSession $session): SimulationSession
+    {
+        $session->update(['status' => SimulationStatus::Generating]);
+
+        try {
+            $ruleSet = RuleSet::findOrFail($session->rule_set_id);
+            $centralPlayers = Player::where('club_id', SimTeamsSeeder::CENTRAL_CLUB_ID)->get();
+            $eastsPlayers = Player::where('club_id', SimTeamsSeeder::EASTS_CLUB_ID)->get();
+
+            $agent = new MatchSimulationAgent($ruleSet, $centralPlayers, $eastsPlayers);
+
+            $userPrompt = $this->promptBuilder->buildUserPrompt(
+                $session->scenario_preset ?? 'routine',
+                $session->scenario_prompt,
+            );
+
+            $response = $agent->prompt(
+                prompt: $userPrompt,
+                provider: Lab::Anthropic,
+                model: $session->model_name,
+            );
+
+            $rawEvents = $response->structured['events'] ?? [];
+
+            $result = $this->validator->validate(
+                rawEvents: $rawEvents,
+                homePlayerIds: $centralPlayers->pluck('id')->all(),
+                awayPlayerIds: $eastsPlayers->pluck('id')->all(),
+                homeTeamId: SimTeamsSeeder::CENTRAL_TEAM_ID,
+                awayTeamId: SimTeamsSeeder::EASTS_TEAM_ID,
+            );
+
+            $session->update([
+                'status' => SimulationStatus::Generated,
+                'generated_events' => $result->validEvents,
+                'total_events' => $result->totalValid(),
+                'skipped_events' => $result->skippedEvents,
+            ]);
+
+            Log::info("Generated {$result->totalValid()} events, skipped {$result->totalSkipped()}", [
+                'session_id' => $session->id,
+            ]);
+        } catch (\Throwable $e) {
+            $session->update([
+                'status' => SimulationStatus::Failed,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            Log::error("Event generation failed: {$e->getMessage()}", [
+                'session_id' => $session->id,
+                'exception' => $e,
+            ]);
+        }
+
+        return $session->fresh();
+    }
+
+    public function setupCloudMatch(SimulationSession $session): SimulationSession
+    {
+        try {
+            $match = $this->cloudApi->createMatch(
+                ruleSetId: $session->rule_set_id,
+                homeTeamId: SimTeamsSeeder::CENTRAL_TEAM_ID,
+                awayTeamId: SimTeamsSeeder::EASTS_TEAM_ID,
+                options: [
+                    'home_cap_colour' => '#003087',
+                    'away_cap_colour' => '#ffffff',
+                    'venue' => 'Simulation Arena',
+                    'scheduled_at' => now()->toIso8601String(),
+                ],
+            );
+
+            $matchId = $match['id'];
+            $session->update(['cloud_match_id' => $matchId]);
+
+            $rosterEntries = $this->buildRosterEntries();
+            $this->cloudApi->setRoster($matchId, $rosterEntries);
+
+            $scorerToken = $this->cloudApi->generateScorerToken($matchId);
+            $session->update(['scorer_token' => $scorerToken]);
+        } catch (\Throwable $e) {
+            $session->update([
+                'status' => SimulationStatus::Failed,
+                'error_message' => "Cloud setup failed: {$e->getMessage()}",
+            ]);
+
+            Log::error("Cloud match setup failed: {$e->getMessage()}", [
+                'session_id' => $session->id,
+                'exception' => $e,
+            ]);
+        }
+
+        return $session->fresh();
+    }
+
+    public function startPlayback(SimulationSession $session): void
+    {
+        $session->update([
+            'status' => SimulationStatus::Playing,
+        ]);
+
+        PlaySimulation::dispatch($session);
+    }
+
+    public function pause(SimulationSession $session): void
+    {
+        $session->update(['status' => SimulationStatus::Paused]);
+    }
+
+    public function resume(SimulationSession $session): void
+    {
+        $session->update(['status' => SimulationStatus::Playing]);
+
+        PlaySimulation::dispatch($session);
+    }
+
+    public function stop(SimulationSession $session): void
+    {
+        $session->update(['status' => SimulationStatus::Stopped]);
+    }
+
+    public function setSpeed(SimulationSession $session, float $multiplier): void
+    {
+        $session->update(['speed_multiplier' => $multiplier]);
+    }
+
+    /** @return array<array{player_id: string, team_id: string, cap_number: int, is_starting: bool, role: string}> */
+    private function buildRosterEntries(): array
+    {
+        $entries = [];
+
+        $teams = [
+            SimTeamsSeeder::CENTRAL_CLUB_ID => SimTeamsSeeder::CENTRAL_TEAM_ID,
+            SimTeamsSeeder::EASTS_CLUB_ID => SimTeamsSeeder::EASTS_TEAM_ID,
+        ];
+
+        foreach ($teams as $clubId => $teamId) {
+            $players = Player::where('club_id', $clubId)
+                ->orderBy('preferred_cap_number')
+                ->get();
+
+            foreach ($players as $index => $player) {
+                $role = match (true) {
+                    $player->is_goalkeeper && $player->preferred_cap_number === 1 => 'goalkeeper',
+                    $player->is_goalkeeper => 'substitute_goalkeeper',
+                    default => 'field_player',
+                };
+
+                $entries[] = [
+                    'player_id' => $player->id,
+                    'team_id' => $teamId,
+                    'cap_number' => $player->preferred_cap_number,
+                    'is_starting' => $index < 7,
+                    'role' => $role,
+                ];
+            }
+        }
+
+        return $entries;
+    }
+}
