@@ -23,7 +23,7 @@ export default function Playback({ session: initialSession, cloudUrl }: Props) {
     const sessionId = initialSession.id
 
     useEffect(() => {
-        const isActive = session.status === 'playing' || session.status === 'generating'
+        const isActive = session.status === 'pending' || session.status === 'playing' || session.status === 'generating'
         if (!isActive) return
 
         const controller = new AbortController()
@@ -73,7 +73,7 @@ export default function Playback({ session: initialSession, cloudUrl }: Props) {
                     </Link>
                 </div>
 
-                {session.status === 'generating' && (
+                {(session.status === 'pending' || session.status === 'generating') && (
                     <div className="mt-8 text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
                         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
@@ -93,7 +93,7 @@ export default function Playback({ session: initialSession, cloudUrl }: Props) {
                     </div>
                 )}
 
-                {session.status !== 'generating' && session.status !== 'failed' && (
+                {session.status !== 'pending' && session.status !== 'generating' && session.status !== 'failed' && (
                     <>
                         <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                             <ScoreDisplay

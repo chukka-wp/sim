@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SimulationStatus;
+use App\Jobs\GenerateSimulation;
 use App\Models\SimulationSession;
 use App\Services\EventPlayerService;
 use App\Services\ScenarioPromptBuilder;
@@ -47,21 +48,7 @@ class SimulationController extends Controller
             modelName: $validated['model_name'],
         );
 
-        $session = $service->generate($session);
-
-        if ($session->status === SimulationStatus::Failed) {
-            return back()->withErrors(['generation' => $session->error_message]);
-        }
-
-        $session = $service->setupCloudMatch($session);
-
-        if ($session->status === SimulationStatus::Failed) {
-            return back()->withErrors(['cloud' => $session->error_message]);
-        }
-
-        if ($validated['auto_play'] ?? false) {
-            $service->startPlayback($session);
-        }
+        GenerateSimulation::dispatch($session, $validated['auto_play'] ?? false);
 
         return redirect()->route('simulation.playback', $session);
     }

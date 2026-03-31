@@ -15,9 +15,11 @@ class EventPlayerService
     public function postEvent(SimulationSession $session, array $eventData): EventPostResult
     {
         try {
-            $this->cloudApi->useScorerToken($session->scorer_token);
-
-            $response = $this->cloudApi->postEvent($session->cloud_match_id, $eventData);
+            $response = $this->cloudApi->postEvent(
+                $session->cloud_match_id,
+                $eventData,
+                $session->scorer_token,
+            );
 
             return new EventPostResult(success: true, responseData: $response);
         } catch (CloudApiException $e) {

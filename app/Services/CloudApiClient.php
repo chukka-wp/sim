@@ -8,19 +8,10 @@ use Illuminate\Support\Facades\Http;
 
 class CloudApiClient
 {
-    private ?string $scorerToken = null;
-
     public function __construct(
         private readonly string $baseUrl,
         private readonly string $managerToken = '',
     ) {}
-
-    public function useScorerToken(string $token): self
-    {
-        $this->scorerToken = $token;
-
-        return $this;
-    }
 
     public function createMatch(string $ruleSetId, string $homeTeamId, string $awayTeamId, array $options = []): array
     {
@@ -49,16 +40,16 @@ class CloudApiClient
         return $response->json('token') ?? throw new CloudApiException('Failed to generate scorer token');
     }
 
-    public function postEvent(string $matchId, array $eventData): array
+    public function postEvent(string $matchId, array $eventData, string $scorerToken): array
     {
-        return $this->scorerRequest()
+        return $this->tokenRequest($scorerToken)
             ->post("/api/v1/matches/{$matchId}/events", $eventData)
             ->json('data') ?? [];
     }
 
-    public function postEventBatch(string $matchId, array $events): array
+    public function postEventBatch(string $matchId, array $events, string $scorerToken): array
     {
-        return $this->scorerRequest()
+        return $this->tokenRequest($scorerToken)
             ->post("/api/v1/matches/{$matchId}/events/batch", ['events' => $events])
             ->json() ?? [];
     }
@@ -82,13 +73,9 @@ class CloudApiClient
         return $this->baseRequest()->withToken($this->managerToken);
     }
 
-    private function scorerRequest(): PendingRequest
+    private function tokenRequest(string $token): PendingRequest
     {
-        if (! $this->scorerToken) {
-            throw new CloudApiException('Scorer token not set. Call useScorerToken() first.');
-        }
-
-        return $this->baseRequest()->withToken($this->scorerToken);
+        return $this->baseRequest()->withToken($token);
     }
 
     private function publicRequest(): PendingRequest

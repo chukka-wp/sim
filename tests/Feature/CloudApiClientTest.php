@@ -1,6 +1,5 @@
 <?php
 
-use App\Exceptions\CloudApiException;
 use App\Services\CloudApiClient;
 use Illuminate\Support\Facades\Http;
 
@@ -50,14 +49,12 @@ it('posts an event with scorer token', function () {
         ]),
     ]);
 
-    $this->client->useScorerToken('scorer-token-abc');
-
     $result = $this->client->postEvent('match-123', [
         'type' => 'match_start',
         'period' => 1,
         'period_clock_seconds' => 480,
         'payload' => [],
-    ]);
+    ], 'scorer-token-abc');
 
     expect($result)->toHaveKey('id', 'event-1');
 
@@ -66,10 +63,6 @@ it('posts an event with scorer token', function () {
             && $request['type'] === 'match_start';
     });
 });
-
-it('throws when posting event without scorer token', function () {
-    $this->client->postEvent('match-123', []);
-})->throws(CloudApiException::class, 'Scorer token not set');
 
 it('gets match state', function () {
     Http::fake([

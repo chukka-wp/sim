@@ -37,8 +37,7 @@ class PlaySimulation implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $client->useScorerToken($session->scorer_token);
-
+        $scorerToken = $session->scorer_token;
         $events = $session->generated_events ?? [];
         $previousRecordedAt = null;
 
@@ -76,7 +75,7 @@ class PlaySimulation implements ShouldBeUnique, ShouldQueue
                     'period' => $event['period'],
                     'period_clock_seconds' => $event['period_clock_seconds'],
                     'payload' => $event['payload'] ?? [],
-                ]);
+                ], $scorerToken);
             } catch (CloudApiException $e) {
                 if ($e->statusCode === 422) {
                     $skipped = $session->skipped_events ?? [];
