@@ -62,9 +62,21 @@ export default function Playback({ session: initialSession, cloudUrl }: Props) {
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             <div className="mx-auto max-w-3xl px-6 py-8">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                        chukka-sim
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <img
+                            src="/images/chukka-logo-light-200.png"
+                            alt="Chukka"
+                            className="h-8 w-auto dark:hidden"
+                        />
+                        <img
+                            src="/images/chukka-logo-dark-200.png"
+                            alt="Chukka"
+                            className="hidden h-8 w-auto dark:block"
+                        />
+                        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                            chukka-sim
+                        </h1>
+                    </div>
                     <Link
                         href={setup.url()}
                         className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"

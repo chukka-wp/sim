@@ -35,12 +35,26 @@ export default function Setup({ ruleSets, presets, models }: Props) {
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             <div className="mx-auto max-w-2xl px-6 py-12">
-                <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-                    chukka-sim
-                </h1>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Match simulation tool
-                </p>
+                <div className="flex items-center gap-3">
+                    <img
+                        src="/images/chukka-logo-light-200.png"
+                        alt="Chukka"
+                        className="h-10 w-auto dark:hidden"
+                    />
+                    <img
+                        src="/images/chukka-logo-dark-200.png"
+                        alt="Chukka"
+                        className="hidden h-10 w-auto dark:block"
+                    />
+                    <div>
+                        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                            chukka-sim
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            Match simulation tool
+                        </p>
+                    </div>
+                </div>
 
                 <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -136,6 +150,33 @@ export default function Setup({ ruleSets, presets, models }: Props) {
                             </button>
                         </div>
                     </form>
+                </div>
+
+                <div className="mt-6 rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-900 dark:bg-sky-950/30">
+                    <p className="text-sm font-medium text-sky-800 dark:text-sky-200">
+                        Part of the Chukka platform
+                    </p>
+                    <p className="mt-1 text-sm text-sky-700 dark:text-sky-300">
+                        Open source water polo scoring and live broadcasting.{' '}
+                        <a
+                            href="https://chukka.app"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium underline hover:text-sky-900 dark:hover:text-sky-100"
+                        >
+                            chukka.app
+                        </a>{' '}
+                        for live matches and scoring &middot;{' '}
+                        <a
+                            href="https://chukka.dev"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium underline hover:text-sky-900 dark:hover:text-sky-100"
+                        >
+                            chukka.dev
+                        </a>{' '}
+                        for docs and the open data spec.
+                    </p>
                 </div>
             </div>
         </div>
