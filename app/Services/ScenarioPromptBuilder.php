@@ -54,7 +54,7 @@ class ScenarioPromptBuilder
 
         ## Match Structure Requirements
         - Start with match_start, then period_start for Q1
-        - Each period begins with period_start and a swim_off event
+        - Each period begins with period_start → swim_off → possession_change (reason: "period_start") → possession_clock_reset (reason: "new_possession")
         - Each period ends with period_end
         - Between Q2 and Q3: halftime_start then halftime_end
         - End with match_end (or shootout_start → shootout_shot(s) → shootout_end → match_end if drawn)
