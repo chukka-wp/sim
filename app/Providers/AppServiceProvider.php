@@ -18,7 +18,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(CloudApiClient::class, fn () => new CloudApiClient(
             baseUrl: config('chukka.cloud_url'),
-            managerToken: config('chukka.manager_token') ?? '',
         ));
     }
 

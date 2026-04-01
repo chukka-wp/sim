@@ -10,8 +10,22 @@ class CloudApiClient
 {
     public function __construct(
         private readonly string $baseUrl,
-        private readonly string $managerToken = '',
     ) {}
+
+    public function login(string $email, string $password): array
+    {
+        return $this->baseRequest()
+            ->post('/api/v1/auth/login', [
+                'email' => $email,
+                'password' => $password,
+            ])
+            ->json();
+    }
+
+    public function logout(string $token): void
+    {
+        $this->tokenRequest($token)->post('/api/v1/auth/logout');
+    }
 
     public function createMatch(string $ruleSetId, string $homeTeamId, string $awayTeamId, array $options = []): array
     {
@@ -70,7 +84,13 @@ class CloudApiClient
 
     private function managerRequest(): PendingRequest
     {
-        return $this->baseRequest()->withToken($this->managerToken);
+        $token = app(TokenService::class)->getToken();
+
+        if (! $token) {
+            throw new CloudApiException('No cloud session — please log in.');
+        }
+
+        return $this->baseRequest()->withToken($token);
     }
 
     private function tokenRequest(string $token): PendingRequest
