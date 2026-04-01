@@ -29,6 +29,11 @@ class MatchSimulationAgent implements Agent, HasStructuredOutput
         $this->promptBuilder = app(ScenarioPromptBuilder::class);
     }
 
+    public function timeout(): int
+    {
+        return 240;
+    }
+
     public function instructions(): string
     {
         return $this->promptBuilder->buildSystemPrompt(
