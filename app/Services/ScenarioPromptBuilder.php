@@ -72,10 +72,12 @@ class ScenarioPromptBuilder
         - Keep goal totals realistic — a 4× 8min match typically sees 10–18 goals
         - For the goal payload: home_score_after and away_score_after must be running totals
 
-        ## Payload Rules
-        - Events with no payload (match_start, period_start, period_end, halftime_start, halftime_end, match_end, match_abandoned, timeout_end, referee_timeout_start, referee_timeout_end, shootout_start, var_review_start): use empty object {}
-        - All other events require the payload fields documented for their type
+        ## Payload Rules — CRITICAL
+        - Events with no payload: use empty object {}
+        - All other events MUST include exactly the required fields shown above — use the EXACT field names (e.g. winning_team_id not team_id for swim_off, outcome not saved for shot, new_value_seconds not possession_time for possession_clock_reset, offending_team_id not team_id for fouls)
         - Always use valid team_id and player_id values from the rosters above
+        - For personal_foul_recorded: triggered_by_event_id can be "previous" as a placeholder
+        - For possession_clock_reset: always include new_value_seconds (28 or 18), mode ("standard" or "reduced"), and reason
         PROMPT;
     }
 
@@ -126,18 +128,73 @@ class ScenarioPromptBuilder
 
     private function formatEventTypes(): string
     {
-        $lines = [];
+        return <<<'EVENTS'
+        ### No payload (use empty object {})
+        - match_start, period_start, period_end, halftime_start, halftime_end, match_end, match_abandoned
+        - timeout_end, referee_timeout_start, referee_timeout_end, shootout_start, var_review_start
 
-        foreach (EventType::cases() as $type) {
-            if ($type === EventType::Correction) {
-                continue;
-            }
+        ### Events with required payload fields
 
-            $hasPayload = $type->hasPayload() ? 'has payload' : 'no payload (empty {})';
-            $lines[] = "- {$type->value}: {$type->label()} ({$hasPayload})";
-        }
+        **swim_off**: { winning_team_id: string }
 
-        return implode("\n", $lines);
+        **goal**: { team_id, player_id (nullable), cap_number (nullable int), method: "field_goal"|"penalty_throw"|"own_goal" (nullable), home_score_after: int, away_score_after: int }
+
+        **shot**: { team_id, player_id (nullable), cap_number (nullable int), outcome: "saved"|"missed"|"blocked" }
+
+        **ordinary_foul**: { offending_team_id, offending_player_id (nullable), offending_cap_number (nullable int), foul_subtype (nullable), free_throw_team_id }
+
+        **exclusion_foul**: { offending_team_id, offending_player_id, offending_cap_number: int, foul_subtype (nullable), is_also_penalty (nullable bool), exclusion_duration_seconds: int, personal_foul_recorded: bool }
+
+        **exclusion_expiry**: { player_id, team_id, reason: "time_elapsed"|"goal_scored"|"team_regained_possession"|"free_throw_awarded" }
+
+        **personal_foul_recorded**: { player_id, team_id, cap_number: int, foul_count_after: int, triggered_by_event_id: string }
+
+        **foul_out**: { player_id, team_id, cap_number: int, foul_count: int, substitute_immediately: bool, enforced: bool }
+
+        **penalty_foul**: { offending_team_id, offending_player_id (nullable), offending_cap_number (nullable int), foul_subtype (nullable), personal_foul_recorded: bool, also_excluded_for_game (nullable bool) }
+
+        **penalty_throw_taken**: { shooting_team_id, shooter_player_id (nullable), shooter_cap_number (nullable int), outcome: "goal"|"miss"|"saved"|"rebound_in_play", home_score_after (nullable int), away_score_after (nullable int) }
+
+        **possession_change**: { team_id, reason: "goal_scored"|"free_throw"|"turnover"|"exclusion_expiry"|"timeout_end"|"period_start" }
+
+        **possession_clock_reset**: { team_id, new_value_seconds: int, mode: "standard"|"reduced", reason: "new_possession"|"shot_rebound_attacking"|"exclusion_foul"|"two_meter_throw"|"penalty_throw_no_change"|"neutral_throw"|"goal_throw"|"timeout_end" }
+
+        **possession_clock_expiry**: { team_id, free_throw_team_id, period_clock_seconds_remaining: int }
+
+        **timeout_start**: { team_id, timeouts_remaining_after: int }
+
+        **free_throw**: { team_id, reason: "foul"|"out_of_bounds"|"clock_expiry" (nullable), taken_by_player_id (nullable), taken_by_cap_number (nullable int) }
+
+        **goal_throw**: { team_id, taken_by_player_id (nullable), taken_by_cap_number (nullable int) }
+
+        **two_meter_throw**: { team_id, side: "left"|"right", taken_by_player_id (nullable), taken_by_cap_number (nullable int) }
+
+        **neutral_throw**: { reason: "simultaneous_foul"|"simultaneous_whistle"|"ball_in_obstruction"|"disputed_start", location (nullable) }
+
+        **substitution**: { team_id, players_off: array, players_on: array, substitution_type: "flying"|"standard"|"bleeding" }
+
+        **goalkeeper_substitution**: { team_id, outgoing_player_id, incoming_player_id, outgoing_cap_number: int, incoming_cap_number: int }
+
+        **simultaneous_exclusion**: { home_player_id, home_cap_number: int, away_player_id, away_cap_number: int, possession_at_exclusion: "home"|"away"|"none", exclusion_duration_seconds: int }
+
+        **violent_action_exclusion**: { offending_team_id, offending_player_id, offending_cap_number: int, substitute_eligible_after_seconds: int, penalty_throw_awarded: bool, personal_foul_recorded: bool }
+
+        **misconduct_exclusion**: { offending_team_id, offending_player_id, offending_cap_number: int, substitute_immediately: bool }
+
+        **yellow_card**: { team_id, issued_to: "head_coach"|"team_official"|"player", player_id (nullable), cap_number (nullable int) }
+
+        **red_card**: { team_id, issued_to: "head_coach"|"team_official"|"player", player_id (nullable), cap_number (nullable int), preceded_by_yellow_card: bool }
+
+        **injury_stoppage**: { player_id (nullable), team_id (nullable), cap_number (nullable int), max_stoppage_seconds: int, possession_team_id }
+
+        **shootout_shot**: { team_id, player_id, cap_number: int, round: int, outcome: "goal"|"miss"|"saved", home_shootout_score_after: int, away_shootout_score_after: int }
+
+        **shootout_end**: { winning_team_id, home_shootout_score: int, away_shootout_score: int, rounds_completed: int }
+
+        **var_review_end**: { outcome: "goal_confirmed"|"goal_disallowed"|"no_change"|"violent_action_sanctioned", notes (nullable) }
+
+        **coach_challenge**: { team_id, challenged_event_id (nullable), outcome: "successful"|"unsuccessful", challenges_remaining_after: int }
+        EVENTS;
     }
 
     private function formatRuleSet(RuleSet $ruleSet): string
