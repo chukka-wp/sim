@@ -29,7 +29,8 @@ export default function Setup({ ruleSets, presets, models }: Props) {
 
     function submit(e: FormEvent, autoPlay: boolean) {
         e.preventDefault()
-        form.transform((data) => ({ ...data, auto_play: autoPlay })).post(store.url())
+        form.setData('auto_play', autoPlay)
+        form.post(store.url())
     }
 
     return (
