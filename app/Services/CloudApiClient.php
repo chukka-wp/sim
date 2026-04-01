@@ -82,6 +82,20 @@ class CloudApiClient
             ->json('data') ?? [];
     }
 
+    public function getBootstrapStatus(): array
+    {
+        return $this->managerRequest()
+            ->get('/api/v1/sim/bootstrap')
+            ->json();
+    }
+
+    public function postBootstrap(array $payload): array
+    {
+        return $this->managerRequest()
+            ->post('/api/v1/sim/bootstrap', $payload)
+            ->json();
+    }
+
     private function managerRequest(): PendingRequest
     {
         $token = app(TokenService::class)->getToken();

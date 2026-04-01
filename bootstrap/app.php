@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAuth;
+use App\Http\Middleware\EnsureBootstrapped;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth.cloud' => EnsureAuth::class,
+            'bootstrapped' => EnsureBootstrapped::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
