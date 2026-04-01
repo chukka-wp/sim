@@ -4,7 +4,7 @@ use App\Http\Controllers\SimulationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [SimulationController::class, 'setup'])->name('simulation.setup');
-Route::post('/simulation', [SimulationController::class, 'store'])->name('simulation.store');
+Route::post('/simulation', [SimulationController::class, 'store'])->name('simulation.store')->middleware('throttle:3,60');
 Route::get('/simulation/{session}', [SimulationController::class, 'playback'])->name('simulation.playback');
 Route::post('/simulation/{session}/play', [SimulationController::class, 'play'])->name('simulation.play');
 Route::post('/simulation/{session}/pause', [SimulationController::class, 'pause'])->name('simulation.pause');
