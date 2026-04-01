@@ -25,8 +25,8 @@ class SimulationController extends Controller
             'ruleSets' => RuleSet::where('is_bundled', true)->get(['id', 'name', 'periods', 'period_duration_seconds', 'running_time', 'possession_clock_enabled']),
             'presets' => ScenarioPromptBuilder::presets(),
             'models' => [
-                ['value' => 'claude-sonnet-4-5-20250514', 'label' => 'Claude Sonnet 4.5'],
-                ['value' => 'claude-haiku-4-5-20251001', 'label' => 'Claude Haiku 4.5'],
+                ['value' => 'claude-sonnet-4-6', 'label' => 'Claude Sonnet 4.6'],
+                ['value' => 'claude-haiku-4-5', 'label' => 'Claude Haiku 4.5'],
             ],
         ]);
     }
@@ -37,7 +37,7 @@ class SimulationController extends Controller
             'rule_set_id' => ['required', 'uuid', 'exists:rule_sets,id'],
             'scenario_preset' => ['required', 'string'],
             'scenario_prompt' => ['required', 'string'],
-            'model_name' => ['required', 'string', 'in:claude-sonnet-4-5-20250514,claude-haiku-4-5-20251001'],
+            'model_name' => ['required', 'string', 'in:claude-sonnet-4-6,claude-haiku-4-5'],
             'auto_play' => ['boolean'],
         ]);
 
