@@ -44,6 +44,14 @@ class SimulationService
             $centralPlayers = Player::where('club_id', SimTeamsSeeder::CENTRAL_CLUB_ID)->get();
             $eastsPlayers = Player::where('club_id', SimTeamsSeeder::EASTS_CLUB_ID)->get();
 
+            Log::info('[sim] Loaded data for generation', [
+                'session_id' => $session->id,
+                'rule_set' => $ruleSet->name,
+                'model' => $session->model_name,
+                'central_players' => $centralPlayers->count(),
+                'easts_players' => $eastsPlayers->count(),
+            ]);
+
             $agent = new MatchSimulationAgent($ruleSet, $centralPlayers, $eastsPlayers);
 
             $userPrompt = $this->promptBuilder->buildUserPrompt(
@@ -51,11 +59,21 @@ class SimulationService
                 $session->scenario_prompt,
             );
 
+            Log::info('[sim] Calling LLM...', [
+                'session_id' => $session->id,
+                'prompt_length' => strlen($userPrompt),
+            ]);
+
             $response = $agent->prompt(
                 prompt: $userPrompt,
                 provider: Lab::Anthropic,
                 model: $session->model_name,
             );
+
+            Log::info('[sim] LLM response received', [
+                'session_id' => $session->id,
+                'raw_event_count' => count($response->structured['events'] ?? []),
+            ]);
 
             $rawEvents = $response->structured['events'] ?? [];
 
@@ -74,7 +92,7 @@ class SimulationService
                 'skipped_events' => $result->skippedEvents,
             ]);
 
-            Log::info("Generated {$result->totalValid()} events, skipped {$result->totalSkipped()}", [
+            Log::info("[sim] Generated {$result->totalValid()} events, skipped {$result->totalSkipped()}", [
                 'session_id' => $session->id,
             ]);
         } catch (\Throwable $e) {
@@ -83,7 +101,7 @@ class SimulationService
                 'error_message' => $e->getMessage(),
             ]);
 
-            Log::error("Event generation failed: {$e->getMessage()}", [
+            Log::error("[sim] Generation failed: {$e->getMessage()}", [
                 'session_id' => $session->id,
                 'exception' => $e,
             ]);
@@ -95,6 +113,8 @@ class SimulationService
     public function setupCloudMatch(SimulationSession $session): SimulationSession
     {
         try {
+            Log::info('[sim] Creating cloud match...', ['session_id' => $session->id]);
+
             $match = $this->cloudApi->createMatch(
                 ruleSetId: $session->rule_set_id,
                 homeTeamId: SimTeamsSeeder::CENTRAL_TEAM_ID,
@@ -110,18 +130,27 @@ class SimulationService
             $matchId = $match['id'];
             $session->update(['cloud_match_id' => $matchId]);
 
+            Log::info('[sim] Cloud match created, setting roster...', [
+                'session_id' => $session->id,
+                'cloud_match_id' => $matchId,
+            ]);
+
             $rosterEntries = $this->buildRosterEntries();
             $this->cloudApi->setRoster($matchId, $rosterEntries);
 
+            Log::info('[sim] Roster set, generating scorer token...', ['session_id' => $session->id]);
+
             $scorerToken = $this->cloudApi->generateScorerToken($matchId);
             $session->update(['scorer_token' => $scorerToken]);
+
+            Log::info('[sim] Cloud setup complete', ['session_id' => $session->id]);
         } catch (\Throwable $e) {
             $session->update([
                 'status' => SimulationStatus::Failed,
                 'error_message' => "Cloud setup failed: {$e->getMessage()}",
             ]);
 
-            Log::error("Cloud match setup failed: {$e->getMessage()}", [
+            Log::error("[sim] Cloud setup failed: {$e->getMessage()}", [
                 'session_id' => $session->id,
                 'exception' => $e,
             ]);
