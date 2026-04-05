@@ -23,7 +23,13 @@ SimulationService (Laravel)
         └── EventPlayerService → pushes events to chukka-cloud REST API
 ```
 
-chukka-sim authenticates with chukka-cloud using a manager account and scorer token. It behaves exactly like chukka-score from chukka-cloud's perspective — no special API access.
+chukka-sim authenticates with chukka-cloud using an API key for match creation, receiving an owner token per match. The owner token is used to set rosters and generate scorer tokens. Event posting uses the scorer token.
+
+## Auth
+
+Configurable via `AUTH_PROVIDER` env var:
+- empty/not set (default) — No authentication. All routes are public. This is the OSS mode.
+- `passport` — SSO via id.chukka.app (Laravel Passport + Socialite). Used when hosting at sim.chukka.dev.
 
 ## Build & Development
 
@@ -79,7 +85,12 @@ resources/js/
 | Variable | Description |
 |---|---|
 | `CHUKKA_CLOUD_URL` | chukka-cloud base URL |
-| `CHUKKA_MANAGER_TOKEN` | Manager API token for creating matches |
+| `CHUKKA_API_KEY` | API key for chukka-cloud match creation |
+| `AUTH_PROVIDER` | empty = no auth (OSS), `passport` = OAuth via id.chukka.app |
+| `CHUKKA_ID_URL` | id.chukka.app base URL (only when AUTH_PROVIDER=passport) |
+| `CHUKKA_ID_CLIENT_ID` | OAuth client ID from id.chukka.app |
+| `CHUKKA_ID_CLIENT_SECRET` | OAuth client secret |
+| `CHUKKA_ID_REDIRECT` | OAuth callback URL |
 | `PRISM_DEFAULT_MODEL` | `claude-sonnet-4-5` or `claude-haiku-4-5` |
 | `ANTHROPIC_API_KEY` | API key for LLM calls |
 
@@ -126,6 +137,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/ai (AI) - v0
 - laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
+- laravel/socialite (SOCIALITE) - v5
 - laravel/wayfinder (WAYFINDER) - v0
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
@@ -146,6 +158,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 This project has domain-specific skills available. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
 
 - `laravel-best-practices` — Apply this skill whenever writing, reviewing, or refactoring Laravel PHP code. This includes creating or modifying controllers, models, migrations, form requests, policies, jobs, scheduled commands, service classes, and Eloquent queries. Triggers for N+1 and query performance issues, caching strategies, authorization and security patterns, validation, error handling, queue and job configuration, route definitions, and architectural decisions. Also use for Laravel code reviews and refactoring existing Laravel code to follow best practices. Covers any task involving Laravel backend PHP code patterns.
+- `socialite-development` — Manages OAuth social authentication with Laravel Socialite. Activate when adding social login providers; configuring OAuth redirect/callback flows; retrieving authenticated user details; customizing scopes or parameters; setting up community providers; testing with Socialite fakes; or when the user mentions social login, OAuth, Socialite, or third-party authentication.
 - `wayfinder-development` — Use this skill for Laravel Wayfinder which auto-generates typed functions for Laravel controllers and routes. ALWAYS use this skill when frontend code needs to call backend routes or controller actions. Trigger when: connecting any React/Vue/Svelte/Inertia frontend to Laravel controllers, routes, building end-to-end features with both frontend and backend, wiring up forms or links to backend endpoints, fixing route-related TypeScript errors, importing from @/actions or @/routes, or running wayfinder:generate. Use Wayfinder route functions instead of hardcoded URLs. Covers: wayfinder() vite plugin, .url()/.get()/.post()/.form(), query params, route model binding, tree-shaking. Do not use for backend-only task
 - `pest-testing` — Use this skill for Pest PHP testing in Laravel projects only. Trigger whenever any test is being written, edited, fixed, or refactored — including fixing tests that broke after a code change, adding assertions, converting PHPUnit to Pest, adding datasets, and TDD workflows. Always activate when the user asks how to write something in Pest, mentions test files or directories (tests/Feature, tests/Unit, tests/Browser), or needs browser testing, smoke testing multiple pages for JS errors, or architecture tests. Covers: it()/expect() syntax, datasets, mocking, browser testing (visit/click/fill), smoke testing, arch(), Livewire component tests, RefreshDatabase, and all Pest 4 features. Do not use for factories, seeders, migrations, controllers, models, or non-test PHP code.
 - `inertia-react-development` — Develops Inertia.js v3 React client-side applications. Activates when creating React pages, forms, or navigation; using <Link>, <Form>, useForm, useHttp, setLayoutProps, or router; working with deferred props, prefetching, optimistic updates, instant visits, or polling; or when user mentions React with Inertia, React pages, React forms, or React navigation.

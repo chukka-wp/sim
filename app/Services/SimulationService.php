@@ -117,18 +117,23 @@ class SimulationService
 
             $match = $this->cloudApi->createMatch(
                 ruleSetId: $session->rule_set_id,
-                homeTeamId: SimTeamsSeeder::CENTRAL_TEAM_ID,
-                awayTeamId: SimTeamsSeeder::EASTS_TEAM_ID,
+                homeTeamName: 'Central Newcastle',
+                awayTeamName: 'Easts',
+                homeExternalTeamId: SimTeamsSeeder::CENTRAL_TEAM_ID,
+                awayExternalTeamId: SimTeamsSeeder::EASTS_TEAM_ID,
                 options: [
-                    'home_cap_colour' => '#003087',
-                    'away_cap_colour' => '#ffffff',
                     'venue' => 'Simulation Arena',
                     'scheduled_at' => now()->toIso8601String(),
                 ],
             );
 
             $matchId = $match['id'];
-            $session->update(['cloud_match_id' => $matchId]);
+            $ownerToken = $match['owner_token'];
+
+            $session->update([
+                'cloud_match_id' => $matchId,
+                'owner_token' => $ownerToken,
+            ]);
 
             Log::info('[sim] Cloud match created, setting roster...', [
                 'session_id' => $session->id,
@@ -136,11 +141,11 @@ class SimulationService
             ]);
 
             $rosterEntries = $this->buildRosterEntries();
-            $this->cloudApi->setRoster($matchId, $rosterEntries);
+            $this->cloudApi->setRoster($matchId, $rosterEntries, $ownerToken);
 
             Log::info('[sim] Roster set, generating scorer token...', ['session_id' => $session->id]);
 
-            $scorerToken = $this->cloudApi->generateScorerToken($matchId);
+            $scorerToken = $this->cloudApi->generateScorerToken($matchId, $ownerToken);
             $session->update(['scorer_token' => $scorerToken]);
 
             Log::info('[sim] Cloud setup complete', ['session_id' => $session->id]);
@@ -190,17 +195,17 @@ class SimulationService
         $session->update(['speed_multiplier' => $multiplier]);
     }
 
-    /** @return array<array{player_id: string, team_id: string, cap_number: int, is_starting: bool, role: string}> */
+    /** @return array<array{side: string, cap_number: int, player_name: string, role: string, is_starting: bool, external_player_id: string}> */
     private function buildRosterEntries(): array
     {
         $entries = [];
 
         $teams = [
-            SimTeamsSeeder::CENTRAL_CLUB_ID => SimTeamsSeeder::CENTRAL_TEAM_ID,
-            SimTeamsSeeder::EASTS_CLUB_ID => SimTeamsSeeder::EASTS_TEAM_ID,
+            SimTeamsSeeder::CENTRAL_CLUB_ID => 'home',
+            SimTeamsSeeder::EASTS_CLUB_ID => 'away',
         ];
 
-        foreach ($teams as $clubId => $teamId) {
+        foreach ($teams as $clubId => $side) {
             $players = Player::where('club_id', $clubId)
                 ->orderBy('preferred_cap_number')
                 ->get();
@@ -213,11 +218,12 @@ class SimulationService
                 };
 
                 $entries[] = [
-                    'player_id' => $player->id,
-                    'team_id' => $teamId,
+                    'side' => $side,
                     'cap_number' => $player->preferred_cap_number,
-                    'is_starting' => $index < 7,
+                    'player_name' => $player->name,
                     'role' => $role,
+                    'is_starting' => $index < 7,
+                    'external_player_id' => $player->id,
                 ];
             }
         }

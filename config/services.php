@@ -28,6 +28,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'chukka_id' => [
+        'url' => env('CHUKKA_ID_URL', 'https://id.chukka.app'),
+        'client_id' => env('CHUKKA_ID_CLIENT_ID'),
+        'client_secret' => env('CHUKKA_ID_CLIENT_SECRET'),
+        'redirect' => env('CHUKKA_ID_REDIRECT', '/auth/callback'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

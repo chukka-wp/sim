@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\SimulationSession;
 use App\Services\SimulationService;
-use App\Services\TokenService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,7 +20,6 @@ class GenerateSimulation implements ShouldBeUnique, ShouldQueue
     public function __construct(
         private readonly SimulationSession $session,
         private readonly bool $autoPlay = false,
-        private readonly ?string $cloudToken = null,
     ) {}
 
     public function uniqueId(): string
@@ -31,10 +29,6 @@ class GenerateSimulation implements ShouldBeUnique, ShouldQueue
 
     public function handle(SimulationService $service): void
     {
-        if ($this->cloudToken) {
-            app(TokenService::class)->setToken($this->cloudToken);
-        }
-
         Log::info('[sim] Job started', [
             'session_id' => $this->session->id,
             'auto_play' => $this->autoPlay,

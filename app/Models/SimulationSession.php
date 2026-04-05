@@ -14,6 +14,7 @@ class SimulationSession extends Model
 
     protected $fillable = [
         'cloud_match_id',
+        'owner_token',
         'scorer_token',
         'rule_set_id',
         'scenario_preset',

@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'auth.cloud' => EnsureAuth::class,
+            'auth.chukka' => EnsureAuth::class,
             'bootstrapped' => EnsureBootstrapped::class,
         ]);
     })

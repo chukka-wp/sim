@@ -40,6 +40,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'enabled' => config('chukka.auth_provider') === 'passport',
             ],
         ];
     }

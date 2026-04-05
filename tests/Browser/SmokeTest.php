@@ -13,7 +13,7 @@ it('has no smoke on all pages', function () {
         'rule_set_id' => $ruleSet->id,
         'scenario_preset' => 'routine',
         'scenario_prompt' => 'Test',
-        'model_name' => 'claude-sonnet-4-5-20250514',
+        'model_name' => 'claude-sonnet-4-6',
         'status' => SimulationStatus::Generated,
         'generated_events' => [
             ['type' => 'match_start', 'period' => 1, 'period_clock_seconds' => 480, 'recorded_at' => '2025-03-15T10:00:00Z', 'payload' => []],

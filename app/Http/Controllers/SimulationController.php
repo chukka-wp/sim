@@ -8,7 +8,6 @@ use App\Models\SimulationSession;
 use App\Services\EventPlayerService;
 use App\Services\ScenarioPromptBuilder;
 use App\Services\SimulationService;
-use App\Services\TokenService;
 use ChukkaWp\ChukkaSpec\Enums\EventType;
 use ChukkaWp\ChukkaSpec\Models\RuleSet;
 use Illuminate\Http\JsonResponse;
@@ -49,8 +48,7 @@ class SimulationController extends Controller
             modelName: $validated['model_name'],
         );
 
-        $cloudToken = app(TokenService::class)->getToken();
-        GenerateSimulation::dispatch($session, $validated['auto_play'] ?? false, $cloudToken);
+        GenerateSimulation::dispatch($session, $validated['auto_play'] ?? false);
 
         return redirect()->route('simulation.playback', $session);
     }

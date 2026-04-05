@@ -40,7 +40,7 @@ it('creates a session and dispatches generation job', function () {
         'rule_set_id' => $ruleSet->id,
         'scenario_preset' => 'routine',
         'scenario_prompt' => 'A competitive match',
-        'model_name' => 'claude-sonnet-4-5-20250514',
+        'model_name' => 'claude-sonnet-4-6',
         'auto_play' => true,
     ]);
 

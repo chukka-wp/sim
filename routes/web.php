@@ -5,11 +5,19 @@ use App\Http\Controllers\BootstrapController;
 use App\Http\Controllers\SimulationController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', [LoginController::class, 'create'])->name('login');
-Route::post('/login', [LoginController::class, 'store']);
-Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+// ── Auth (only when AUTH_PROVIDER=passport) ──────────────────────────
 
-Route::middleware('auth.cloud')->group(function () {
+if (config('chukka.auth_provider') === 'passport') {
+    Route::get('/login', [LoginController::class, 'show'])->name('login');
+    Route::get('/auth/redirect', [LoginController::class, 'redirect'])->name('auth.redirect');
+    Route::get('/auth/callback', [LoginController::class, 'callback'])->name('auth.callback');
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
+    Route::get('/dev-login/{user}', [LoginController::class, 'devLogin'])->name('dev.login');
+}
+
+// ── App (auth required when enabled, bootstrap required always) ──────
+
+Route::middleware('auth.chukka')->group(function () {
     // Bootstrap (no EnsureBootstrapped — this IS the setup)
     Route::get('/bootstrap', [BootstrapController::class, 'show'])->name('bootstrap.show');
     Route::post('/bootstrap', [BootstrapController::class, 'store'])->name('bootstrap.store');

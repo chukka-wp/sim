@@ -10,45 +10,61 @@ class CloudApiClient
 {
     public function __construct(
         private readonly string $baseUrl,
+        private readonly string $apiKey,
     ) {}
 
-    public function login(string $email, string $password): array
-    {
-        return $this->baseRequest()
-            ->post('/api/v1/auth/login', [
-                'email' => $email,
-                'password' => $password,
-            ])
-            ->json();
-    }
-
-    public function logout(string $token): void
-    {
-        $this->tokenRequest($token)->post('/api/v1/auth/logout');
-    }
-
-    public function createMatch(string $ruleSetId, string $homeTeamId, string $awayTeamId, array $options = []): array
-    {
-        return $this->managerRequest()
+    /**
+     * Create a match in cloud using API key auth.
+     *
+     * @return array{id: string, owner_token: string}
+     */
+    public function createMatch(
+        string $ruleSetId,
+        string $homeTeamName,
+        string $awayTeamName,
+        ?string $homeExternalTeamId = null,
+        ?string $awayExternalTeamId = null,
+        array $options = [],
+    ): array {
+        $response = $this->apiKeyRequest()
             ->post('/api/v1/matches', array_merge([
                 'rule_set_id' => $ruleSetId,
-                'home_team_id' => $homeTeamId,
-                'away_team_id' => $awayTeamId,
+                'home_team_name' => $homeTeamName,
+                'away_team_name' => $awayTeamName,
+                'home_external_team_id' => $homeExternalTeamId,
+                'away_external_team_id' => $awayExternalTeamId,
             ], $options))
-            ->json('data') ?? throw new CloudApiException('Failed to create match');
+            ->json();
+
+        $matchData = $response['data'] ?? null;
+        $ownerToken = $response['owner_token'] ?? null;
+
+        if (! $matchData || ! $ownerToken) {
+            throw new CloudApiException('Failed to create match — missing data or owner_token');
+        }
+
+        return [
+            ...$matchData,
+            'owner_token' => $ownerToken,
+        ];
     }
 
-    /** @param array<array{player_id: string, team_id: string, cap_number: int, is_starting: bool, role: string}> $entries */
-    public function setRoster(string $matchId, array $entries): void
+    /**
+     * Set the roster for a match using owner token auth.
+     *
+     * @param  array<array{side: string, cap_number: int, player_name: string, role: string, is_starting: bool, external_player_id: string|null}>  $entries
+     */
+    public function setRoster(string $matchId, array $entries, string $ownerToken): void
     {
-        $this->managerRequest()
+        $this->tokenRequest($ownerToken)
             ->post("/api/v1/matches/{$matchId}/roster", ['entries' => $entries])
             ->throw();
     }
 
-    public function generateScorerToken(string $matchId): string
+    /** Generate a scorer token for a match using owner token auth. */
+    public function generateScorerToken(string $matchId, string $ownerToken): string
     {
-        $response = $this->managerRequest()
+        $response = $this->tokenRequest($ownerToken)
             ->post("/api/v1/matches/{$matchId}/scorer-token");
 
         return $response->json('token') ?? throw new CloudApiException('Failed to generate scorer token');
@@ -82,29 +98,13 @@ class CloudApiClient
             ->json('data') ?? [];
     }
 
-    public function getBootstrapStatus(): array
+    private function apiKeyRequest(): PendingRequest
     {
-        return $this->managerRequest()
-            ->get('/api/v1/sim/bootstrap')
-            ->json();
-    }
-
-    public function postBootstrap(array $payload): array
-    {
-        return $this->managerRequest()
-            ->post('/api/v1/sim/bootstrap', $payload)
-            ->json();
-    }
-
-    private function managerRequest(): PendingRequest
-    {
-        $token = app(TokenService::class)->getToken();
-
-        if (! $token) {
-            throw new CloudApiException('No cloud session — please log in.');
+        if (! $this->apiKey) {
+            throw new CloudApiException('CHUKKA_API_KEY is not configured');
         }
 
-        return $this->baseRequest()->withToken($token);
+        return $this->baseRequest()->withToken($this->apiKey);
     }
 
     private function tokenRequest(string $token): PendingRequest
